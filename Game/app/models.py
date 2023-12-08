@@ -34,10 +34,11 @@ class Question(models.Model):
         return self.question
 
 
-class Answer(models.Model):
+class User_Answer(models.Model):
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(Register, on_delete=models.CASCADE)
-    questions = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
+    questions_id = models.ForeignKey(Question, on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, null=True)
     attempted = models.BooleanField(default=False)
     complet = models.BooleanField(default=False)
     answer = models.CharField(max_length=50)
