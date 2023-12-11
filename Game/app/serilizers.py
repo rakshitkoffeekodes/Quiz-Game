@@ -12,3 +12,9 @@ class Questionserilizer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = ('user', 'quiz', 'question', 'option_one', 'option_two', 'option_three', 'option_four')
+
+
+class UserAnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User_Answer
+        fields = '__all__'

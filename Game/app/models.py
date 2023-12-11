@@ -42,3 +42,5 @@ class User_Answer(models.Model):
     attempted = models.BooleanField(default=False)
     complet = models.BooleanField(default=False)
     answer = models.CharField(max_length=50)
+
+

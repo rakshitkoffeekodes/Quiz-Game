@@ -5,11 +5,11 @@ from .serilizers import *
 
 @api_view(['POST'])
 def register(request):
-    first_name = request.POST.get('first_name', '')
-    last_name = request.POST.get('last_name', '')
-    email = request.POST.get('email', '')
-    password = request.POST.get('password', '')
-    conform_password = request.POST.get('conform_password', '')
+    first_name = request.POST['first_name']
+    last_name = request.POST['last_name']
+    email = request.POST['email']
+    password = request.POST['password']
+    conform_password = request.POST['conform_password']
     try:
         if password == conform_password:
             user = Register()
@@ -27,8 +27,8 @@ def register(request):
 
 @api_view(['POST'])
 def login(request):
-    email = request.POST.get('email', '')
-    password = request.POST.get('password', '')
+    email = request.POST['email']
+    password = request.POST['password']
     try:
         user_login = Register.objects.get(email=email)
         if user_login.password == password:
@@ -43,7 +43,7 @@ def login(request):
 
 @api_view(['GET'])
 def logout(request):
-    del request.session['email']
+    request.session.flush()
     return JsonResponse({'Message': 'Logout Success'})
 
 
@@ -63,7 +63,7 @@ def add_quiz(request):
 
 @api_view(['PUT'])
 def update_quiz(request):
-    primary_key = request.POST.get('id', '')
+    primary_key = request.POST['id']
     name = request.POST.get('name', '')
     description = request.POST.get('description', '')
     try:
@@ -78,7 +78,7 @@ def update_quiz(request):
         return JsonResponse({'Message': e.__str__()})
 
 
-@api_view(['POST'])
+@api_view(['DELETE'])
 def delete_quiz(request):
     primary_key = request.POST['id']
     try:
@@ -87,6 +87,13 @@ def delete_quiz(request):
         return JsonResponse({'Message': 'Quiz Delete Successfully'})
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
+
+
+@api_view(['GET'])
+def view_quiz(request):
+    all_quiz = Quiz.objects.all()
+    serial = Quizserilizer(all_quiz, many=True)
+    return JsonResponse({'Message': 'All Quiz', 'Quiz': serial.data})
 
 
 @api_view(['POST'])
@@ -116,7 +123,7 @@ def add_question(request):
 
 @api_view(['PUT'])
 def update_question(request):
-    primary_key = request.POST.get('id', '')
+    primary_key = request.POST['id']
     question = request.POST.get('question', '')
     option_one = request.POST.get('option_one', '')
     option_two = request.POST.get('option_two', '')
@@ -138,13 +145,13 @@ def update_question(request):
         if not answer == '':
             update.answer = answer
         update.save()
-        return JsonResponse({'Message': 'Update Successfully'})
+        return JsonResponse({'Message': 'Update Question Successfully'})
 
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
 
 
-@api_view(['POST'])
+@api_view(['DELETE'])
 def delete_question(request):
     primary_key = request.POST['id']
     try:
@@ -156,11 +163,28 @@ def delete_question(request):
 
 
 @api_view(['GET'])
+def view_question(request):
+    list_of_question = []
+    all_question = Question.objects.all()
+    for question in all_question:
+        question_data = {
+            'Quiz': question.quiz.name,
+            'Question': question.question,
+            'Option No 1': question.option_one,
+            'Option No 2': question.option_two,
+            'Option No 3': question.option_three,
+            'Option No 4': question.option_four,
+            'Answer': question.answer
+        }
+        list_of_question.append(question_data)
+    return JsonResponse({'Message': 'All Question', 'Question': list_of_question})
+
+
+@api_view(['GET'])
 def quiz_name(request):
     try:
         user = Register.objects.get(email=request.session['email'])
         all_quiz = Quiz.objects.all()
-        print(all_quiz)
         all_quiz_list = []
         for quiz in all_quiz:
             data = {
@@ -207,11 +231,11 @@ def enter_game(request):
 @api_view(['POST'])
 def answer(request):
     question = request.POST['question']
-    answer = request.POST['answer']
-    try:
-        question_get = Question.objects.get(id=question)
-        user = Register.objects.get(email=request.session['email'])
-        previous_answers = User_Answer.objects.filter(user=user, questions_id=question_get)
+    answer = request.POST.get('answer', '')
+    user = Register.objects.get(email=request.session['email'])
+    question_get = Question.objects.get(id=question)
+    previous_answers = User_Answer.objects.filter(user=user, questions_id=question_get)
+    if not answer == '':
         if not previous_answers:
             user_answer = User_Answer()
             user_answer.attempted = True
@@ -226,30 +250,44 @@ def answer(request):
             user_answer.save()
 
         if answer == question_get.answer:
-            user_answer.complete = True
+            user_answer.complet = True
             user_answer.save()
-            return JsonResponse({'User Name': f'{user.first_name} {user.last_name}', 'Question': question_get.question,
-                                 'Answer': answer, 'Message': 'Your Answer is Correct'})
+            return JsonResponse(
+                {'User Name': f'{user.first_name} {user.last_name}', 'Quiz Name': question_get.quiz.name,
+                 'Question': question_get.question,
+                 'Answer': answer, 'Message': 'Your Answer is Correct'})
         else:
             user_answer.complete = False
             user_answer.save()
-            return JsonResponse({'User Name': f'{user.first_name} {user.last_name}', 'Question': question_get.question,
-                                 'Answer': answer, 'Message': 'Your Answer is Wrong'})
-    except Exception as e:
-        return JsonResponse({'Message': e.__str__()})
+            return JsonResponse(
+                {'User Name': f'{user.first_name} {user.last_name}', 'Quiz Name': question_get.quiz.name,
+                 'Question': question_get.question,
+                 'Answer': answer, 'Message': 'Your Answer is Wrong'})
+    else:
+        if not previous_answers:
+            user_answer = User_Answer()
+            user_answer.attempted = True
+            user_answer.questions_id = question_get
+            user_answer.quiz = question_get.quiz
+            user_answer.answer = answer
+            user_answer.user = user
+            user_answer.save()
+        return JsonResponse(
+            {'User Name': f'{user.first_name} {user.last_name}', 'Quiz Name': question_get.quiz.name,
+             'Question': question_get.question})
 
 
 @api_view(['POST'])
 def score(request):
     quiz_id = request.POST.get('quiz_id', '')
-    correct = 0
-    wrong = 0
-    attempted = 0
-    unattempted = 0
     quiz_title = ''
+    list_of_score = []
     try:
         user = Register.objects.get(email=request.session['email'])
         if quiz_id is not '':
+            correct = 0
+            wrong = 0
+            attempted = 0
             quiz_question = Question.objects.filter(quiz=quiz_id)
             user_data = User_Answer.objects.filter(quiz=quiz_id, user=user)
             print(user_data)
@@ -272,25 +310,38 @@ def score(request):
                  'Attempted': f'{attempted} Question', 'Unattempted': f'{unattempted_question} Question',
                  'Total Score': total_score})
         else:
-            all_question = Question.objects.all()
+            user = Register.objects.get(email=request.session['email'])
             user_data = User_Answer.objects.filter(user=user)
             quiz_title = 'All Quiz'
+            list_of_score = []
             for i in user_data:
-                if i.attempted:
-                    attempted += 1
-                    if i.complet:
-                        correct += 1
+                quiz_question = Question.objects.filter(quiz=i.quiz)
+                user_data = User_Answer.objects.filter(user=user, quiz=i.quiz)
+                correct = 0
+                wrong = 0
+                attempted = 0
+                unattempted = 0
+                for quiz in user_data:
+                    if quiz.attempted:
+                        attempted += 1
+                        if quiz.complet:
+                            correct += 1
+                        else:
+                            wrong += 1
                     else:
-                        wrong += 1
-                else:
-                    unattempted += 1
-            total_question = all_question.count()
-            unattempted_question = total_question - attempted
-            total_score = correct * 100 / total_question
-            return JsonResponse(
-                {'User': f'{user.first_name} {user.last_name}', 'Quiz Name': f'{quiz_title}',
-                 'Total Question': total_question, 'Correct': correct, 'Wrong': wrong,
-                 'Attempted': f'{attempted} Question', 'Unattempted': f'{unattempted_question} Question',
-                 'Total Score': total_score})
+                        unattempted += 1
+                total_question = quiz_question.count()
+                total_score = correct * 100 / total_question
+                unattempted_question = total_question - attempted
+                data = {'Quiz': i.quiz.name,
+                        'Total Question': total_question,
+                        'Correct': correct,
+                        'Wrong': wrong,
+                        'Attempted': attempted,
+                        'Unattempted': unattempted_question,
+                        'Total Score': total_score}
+                list_of_score.append(data)
+            return JsonResponse({'User': f'{user.first_name} {user.last_name}', 'Quiz Name': f'{quiz_title}',
+                                 'Total Question': list_of_score})
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
