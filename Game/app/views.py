@@ -319,11 +319,11 @@ def score(request):
                 user_data = User_Answer.objects.filter(user=user, quiz=i.quiz)
                 correct = 0
                 wrong = 0
-                attempted = 0
+                attempt = 0
                 unattempted = 0
                 for quiz in user_data:
                     if quiz.attempted:
-                        attempted += 1
+                        attempt += 1
                         if quiz.complet:
                             correct += 1
                         else:
@@ -332,12 +332,12 @@ def score(request):
                         unattempted += 1
                 total_question = quiz_question.count()
                 total_score = correct * 100 / total_question
-                unattempted_question = total_question - attempted
+                unattempted_question = total_question - attempt
                 data = {'Quiz': i.quiz.name,
                         'Total Question': total_question,
                         'Correct': correct,
                         'Wrong': wrong,
-                        'Attempted': attempted,
+                        'Attempted': attempt,
                         'Unattempted': unattempted_question,
                         'Total Score': total_score}
                 list_of_score.append(data)
@@ -345,3 +345,74 @@ def score(request):
                                  'Total Question': list_of_score})
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
+
+
+
+
+
+
+
+
+
+
+#
+# user = Register.objects.get(email=request.session['email'])
+#             user_data = User_Answer.objects.filter(user=user)
+#             quiz_title = 'All Quiz'
+#             list_of_score = []
+#             data = {}
+#             for i in user_data:
+#                 quiz_question = Question.objects.filter(quiz=i.quiz)
+#                 user_data = User_Answer.objects.filter(user=user, quiz=i.quiz)
+#                 # print(i)
+#                 correct = 0
+#                 wrong = 0
+#                 attempt = 0
+#                 unattempted = 0
+#                 if list_of_score.__len__() == 0:
+#                     for quiz in user_data:
+#                         if quiz.attempted:
+#                             attempt += 1
+#                             if quiz.complet:
+#                                 correct += 1
+#                             else:
+#                                 wrong += 1
+#                         else:
+#                             unattempted += 1
+#                     total_question = quiz_question.count()
+#                     total_score = correct * 100 / total_question
+#                     unattempted_question = total_question - attempt
+#                     data = {'Quiz': i.quiz.name,
+#                             'Total Question': total_question,
+#                             'Correct': correct,
+#                             'Wrong': wrong,
+#                             'Attempted': attempt,
+#                             'Unattempted': unattempted_question,
+#                             'Total Score': total_score}
+#                     list_of_score.append(data)
+#                 else:
+#                     for quiz in list_of_score:
+#                         if quiz['Quiz'] != i.quiz.name:
+#                             print(i.complet)
+#                             if i.attempted:
+#                                 attempt += 1
+#                                 if i.complet:
+#                                     correct += 1
+#                                 else:
+#                                     print(correct)
+#                                     wrong += 1
+#                             else:
+#                                 unattempted += 1
+#                         total_question = quiz_question.count
+#                         total_score = int(correct) * 100 / total_question
+#                         unattempted_question = total_question - unattempted
+#                         data = {'Quiz': i.quiz.name,
+#                                 'Total Question': total_question,
+#                                 'Correct': correct,
+#                                 'Wrong': wrong,
+#                                 'Attempted': attempt,
+#                                 'Unattempted': unattempted_question,
+#                                 'Total Score': total_score}
+#                         list_of_score.append(data)
+#             return JsonResponse({'User': f'{user.first_name} {user.last_name}', 'Quiz Name': f'{quiz_title}',
+#                                  'Total Question': list_of_score})
