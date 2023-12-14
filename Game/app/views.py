@@ -53,12 +53,16 @@ def logout(request):
 @api_view(['POST'])
 def add_quiz(request):
     name = request.POST['name']
-    description = request.POST['description']
+    description = request.POST.get('description', '')
+
+    name_list = name.split(',')
+    description_list = description.split('.,')
     try:
-        Quiz.objects.create(
-            name=name,
-            description=description
-        )
+        for i in range(len(name_list)):
+            quiz_add = Quiz()
+            quiz_add.name = name_list[i]
+            quiz_add.description = description_list[i]
+            quiz_add.save()
         return JsonResponse({'Message': 'Add Quiz success'})
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
@@ -115,11 +119,12 @@ def add_question(request):
     option_three_list = option_three.split(',')
     option_four_list = option_four.split(',')
     answer_list = answer.split(',')
+
     try:
-        quiz = Quiz.objects.get(id=quiz)
+        quiz_id = Quiz.objects.get(id=quiz)
         for i in range(len(question_list)):
             question_add = Question()
-            question_add.quiz = quiz
+            question_add.quiz = quiz_id
             question_add.question = question_list[i]
             question_add.option_one = option_one_list[i]
             question_add.option_two = option_two_list[i]
@@ -127,8 +132,8 @@ def add_question(request):
             question_add.option_four = option_four_list[i]
             question_add.answer = answer_list[i]
             question_add.save()
+        return JsonResponse({'Message': 'Add Question Success'})
 
-        return JsonResponse({'Message': 'Add Question Successfully'})
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
 
@@ -245,18 +250,17 @@ def answer(request):
     user = Register.objects.get(email=request.session['email'])
     dict1 = {}
     Answers = []
-
     quiz_id = request.POST['quiz']
     question = request.POST['question']
     answer = request.POST.get('answer', '')
-
     question_list = question.split(',')
     answer_list = answer.split(',')
 
     for key, value in zip(question_list, answer_list):
-        dict1[key] = value
+        dict1[key] = value.strip()
 
     try:
+
         for key in dict1:
             question_get = Question.objects.get(id=key, quiz=quiz_id)
             previous_answers = User_Answer.objects.filter(user=user, questions_id=question_get)
@@ -340,6 +344,7 @@ def score(request):
             total_question = quiz_question.count()
             unattempted_question = total_question - attempted
             total_score = correct * 100 / total_question
+
             return JsonResponse(
                 {'User': f'{user.first_name} {user.last_name}', 'Quiz Name': f'{quiz_title}',
                  'Total Question': total_question, 'Correct': correct,
@@ -378,7 +383,7 @@ def score(request):
                             'Wrong': wrong,
                             'Attempted': attempt,
                             'Unattempted': unattempted_question,
-                            'Total Score': total_score}
+                            'Total Score': int(total_score)}
 
                 list_of_score.append(data)
             for name in list_of_score:
