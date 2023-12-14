@@ -108,17 +108,26 @@ def add_question(request):
     option_three = request.POST['option_three']
     option_four = request.POST['option_four']
     answer = request.POST['answer']
+
+    question_list = question.split('.,')
+    option_one_list = option_one.split(',')
+    option_two_list = option_two.split(',')
+    option_three_list = option_three.split(',')
+    option_four_list = option_four.split(',')
+    answer_list = answer.split(',')
     try:
         quiz = Quiz.objects.get(id=quiz)
-        Question.objects.create(
-            quiz=quiz,
-            question=question,
-            option_one=option_one,
-            option_two=option_two,
-            option_three=option_three,
-            option_four=option_four,
-            answer=answer
-        )
+        for i in range(len(question_list)):
+            question_add = Question()
+            question_add.quiz = quiz
+            question_add.question = question_list[i]
+            question_add.option_one = option_one_list[i]
+            question_add.option_two = option_two_list[i]
+            question_add.option_three = option_three_list[i]
+            question_add.option_four = option_four_list[i]
+            question_add.answer = answer_list[i]
+            question_add.save()
+
         return JsonResponse({'Message': 'Add Question Successfully'})
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
@@ -235,58 +244,74 @@ def enter_game(request):
 def answer(request):
     user = Register.objects.get(email=request.session['email'])
     dict1 = {}
+    Answers = []
+
     quiz_id = request.POST['quiz']
-    question = request.POST['question with answer']
-    a = question.split(',')
+    question = request.POST['question']
+    answer = request.POST.get('answer', '')
 
-    for i in range(0, len(a), 2):
-        dict1[a[i]] = a[i + 1]
+    question_list = question.split(',')
+    answer_list = answer.split(',')
+
+    for key, value in zip(question_list, answer_list):
+        dict1[key] = value
+
     try:
-
-        for key, value in dict1.items():
-            print(key, value)
+        for key in dict1:
             question_get = Question.objects.get(id=key, quiz=quiz_id)
             previous_answers = User_Answer.objects.filter(user=user, questions_id=question_get)
-            if not value == '':
+            if not dict1[key] == '':
                 if not previous_answers:
                     user_answer = User_Answer()
                     user_answer.attempted = True
                     user_answer.questions_id = question_get
                     user_answer.quiz = question_get.quiz
-                    user_answer.answer = value
+                    user_answer.answer = dict1[key]
                     user_answer.user = user
                     user_answer.save()
                 else:
                     user_answer = previous_answers[0]
-                    user_answer.answer = value
+                    user_answer.answer = dict1[key]
                     user_answer.save()
 
-                if value == question_get:
+                if dict1[key] == question_get.answer:
                     user_answer.complet = True
                     user_answer.save()
-                    return JsonResponse(
-                        {'User Name': f'{user.first_name} {user.last_name}', 'Quiz Name': question_get.quiz.name,
-                         'Question': question_get.question,
-                         'Answer': value, 'Message': 'Your Answer is Correct'})
+                    result = {
+                        'Quiz Name': question_get.quiz.name,
+                        'Question': question_get.question,
+                        'Answer': dict1[key],
+                        'Message': 'Your Answer is Correct'
+                    }
                 else:
                     user_answer.complet = False
                     user_answer.save()
-                    return JsonResponse(
-                        {'User Name': f'{user.first_name} {user.last_name}', 'Quiz Name': question_get.quiz.name,
-                         'Question': question_get.question,
-                         'Answer': value, 'Message': 'Your Answer is Wrong'})
+                    result = {
+                        'Quiz Name': question_get.quiz.name,
+                        'Question': question_get.question,
+                        'Answer': dict1[key],
+                        'Message': 'Your Answer is Wrong'
+                    }
             else:
-                user_answer = User_Answer()
-                user_answer.attempted = True
-                user_answer.questions_id = question_get
-                user_answer.quiz = question_get.quiz
-                user_answer.answer = value
-                user_answer.user = user
-                user_answer.save()
-
-            return JsonResponse(
-                {'User Name': f'{user.first_name} {user.last_name}', 'Quiz Name': question_get.quiz.name,
-                 'Question': question_get.question})
+                if not previous_answers:
+                    user_answer = User_Answer()
+                    user_answer.attempted = True
+                    user_answer.questions_id = question_get
+                    user_answer.quiz = question_get.quiz
+                    user_answer.answer = dict1[key]
+                    user_answer.user = user
+                    user_answer.save()
+                    result = {
+                        'Quiz Name': question_get.quiz.name,
+                        'Question': question_get.question,
+                    }
+                else:
+                    result = {
+                        'Quiz Name': question_get.quiz.name,
+                        'Question': question_get.question,
+                    }
+            Answers.append(result)
+        return JsonResponse({'User Name': f'{user.first_name} {user.last_name}', 'Answers': Answers})
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
 
