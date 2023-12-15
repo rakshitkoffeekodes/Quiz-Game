@@ -209,7 +209,7 @@ def quiz_name(request):
             }
             all_quiz_list.append(data)
         return JsonResponse(
-            {'User Name': f'{user.first_name} {user.last_name}', 'Message': 'All Quiz',
+            {'Message': 'All Quiz',
              'Quiz': all_quiz_list})
     except Exception as e:
         return JsonResponse({'Message': f'{e.__str__()}'})
@@ -249,24 +249,17 @@ def answer(request):
     user = Register.objects.get(email=request.session['email'])
     dict1 = {}
     all_answer = []
-    correct = 0
-    wrong = 0
-    attempted = 0
-    unattempted = 0
+    result = {}
     quiz_id = request.POST['quiz']
-    question = request.POST['question']
-    answers = request.POST.get('answer', '')
-    question_list = question.split(',')
-    answer_list = answers.split(',')
-
-    for key, value in zip(question_list, answer_list):
+    question = request.POST['question'].split(',')
+    answers = request.POST.get('answer', '').split('.,')
+    for key, value in zip(question, answers):
         dict1[key] = value.strip()
-
     try:
-
         for key in dict1:
             question_get = Question.objects.get(id=key, quiz=quiz_id)
             previous_answers = UserAnswer.objects.filter(user=user, questions_id=question_get)
+            previous = [previous.completed is True for previous in previous_answers]
             if not dict1[key] == '':
                 if not previous_answers:
                     user_answer = UserAnswer()
@@ -276,12 +269,17 @@ def answer(request):
                     user_answer.answer = dict1[key]
                     user_answer.user = user
                     user_answer.save()
-                else:
+
+                elif previous_answers and previous == [True]:
                     user_answer = previous_answers[0]
                     user_answer.answer = dict1[key]
-                    user_answer.save()
-
-                if dict1[key] == question_get.answer:
+                    result = {
+                        'Quiz Name': question_get.quiz.name,
+                        'Question': question_get.question,
+                        'Message': 'Is Answer already exist '
+                    }
+                elif dict1[key] == question_get.answer:
+                    user_answer = previous_answers[0]
                     user_answer.completed = True
                     user_answer.save()
                     result = {
@@ -291,6 +289,7 @@ def answer(request):
                         'Message': 'Your Answer is Correct'
                     }
                 else:
+                    user_answer = previous_answers[0]
                     user_answer.completed = False
                     user_answer.save()
                     result = {
@@ -314,6 +313,7 @@ def answer(request):
                         'Question': question_get.question,
                     }
                 else:
+                    user_answer = previous_answers[0]
                     user_answer.completed = False
                     user_answer.save()
                     result = {
@@ -323,23 +323,15 @@ def answer(request):
             all_answer.append(result)
         quiz_question = Question.objects.filter(quiz=quiz_id)
         user_answer = UserAnswer.objects.filter(quiz=quiz_id, user=user)
-        for i in user_answer:
-            if i.attempted:
-                attempted += 1
-                if i.completed:
-                    correct += 1
-                else:
-                    wrong += 1
-            else:
-                unattempted += 1
-
-        total_question = quiz_question.count()
-        unattempted_question = total_question - attempted
-        total_score = int(correct * 100 / total_question)
-        return JsonResponse(
-            {'User Name': f'{user.first_name} {user.last_name}', 'Total_question': total_question, 'Correct': correct,
-             'Wrong': wrong, 'Attempted': attempted, 'UnAttempted': unattempted_question, 'Total Score': total_score,
-             'Answers': all_answer})
+        result = {
+            'User Name': f'{user.first_name} {user.last_name}',
+            'Total_question': quiz_question.count(),
+            'Correct': user_answer.filter(completed=True).count(),
+            'Wrong': user_answer.filter(completed=False).count(),
+            'Attempted': user_answer.filter(attempted=True).count(),
+            'UnAttempted': quiz_question.count() - user_answer.filter(attempted=True).count(),
+            'Total Score': int(user_answer.filter(completed=True).count() * 100 / quiz_question.count())}
+        return JsonResponse({'Data': result, 'All Answer': all_answer})
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
 
