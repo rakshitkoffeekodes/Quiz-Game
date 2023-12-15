@@ -17,11 +17,11 @@ class Questionadmin(admin.ModelAdmin):
     list_display = ('id', 'quiz', 'question', 'option_one', 'option_two', 'option_three', 'option_four', 'answer')
 
 
-class answeradmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'questions_id', 'quiz', 'attempted', 'complet', 'answer')
+class Useransweradmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'questions_id', 'quiz', 'attempted', 'completed', 'answer')
 
 
 admin.site.register(Register, Registeradmin)
 admin.site.register(Quiz, Quizadmin)
 admin.site.register(Question, Questionadmin)
-admin.site.register(User_Answer, answeradmin)
+admin.site.register(UserAnswer, Useransweradmin)

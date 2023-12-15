@@ -1,6 +1,4 @@
-import json
-
-from django.db.models import Q
+import requests
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from .serilizers import *
@@ -46,7 +44,7 @@ def login(request):
 
 @api_view(['GET'])
 def logout(request):
-    request.session.flush()
+    del request.session['email']
     return JsonResponse({'Message': 'Logout Success'})
 
 
@@ -99,7 +97,7 @@ def delete_quiz(request):
 @api_view(['GET'])
 def view_quiz(request):
     all_quiz = Quiz.objects.all()
-    serial = Quizserilizer(all_quiz, many=True)
+    serial = QuizSerializer(all_quiz, many=True)
     return JsonResponse({'Message': 'All Quiz', 'Quiz': serial.data})
 
 
@@ -111,14 +109,14 @@ def add_question(request):
     option_two = request.POST['option_two']
     option_three = request.POST['option_three']
     option_four = request.POST['option_four']
-    answer = request.POST['answer']
+    answers = request.POST['answer']
 
     question_list = question.split('.,')
     option_one_list = option_one.split(',')
     option_two_list = option_two.split(',')
     option_three_list = option_three.split(',')
     option_four_list = option_four.split(',')
-    answer_list = answer.split(',')
+    answer_list = answers.split(',')
 
     try:
         quiz_id = Quiz.objects.get(id=quiz)
@@ -146,7 +144,7 @@ def update_question(request):
     option_two = request.POST.get('option_two', '')
     option_three = request.POST.get('option_three', '')
     option_four = request.POST.get('option_four', '')
-    answer = request.POST.get('answer', '')
+    answers = request.POST.get('answer', '')
     try:
         update = Question.objects.get(id=primary_key)
         if not question == '':
@@ -160,7 +158,7 @@ def update_question(request):
         if not option_four == '':
             update.option_four = option_four
         if not answer == '':
-            update.answer = answer
+            update.answer = answers
         update.save()
         return JsonResponse({'Message': 'Update Question Successfully'})
 
@@ -211,7 +209,8 @@ def quiz_name(request):
             }
             all_quiz_list.append(data)
         return JsonResponse(
-            {'User Name': f'{user.first_name} {user.last_name}', 'Message': 'All Quiz', 'Quiz': all_quiz_list})
+            {'User Name': f'{user.first_name} {user.last_name}', 'Message': 'All Quiz',
+             'Quiz': all_quiz_list})
     except Exception as e:
         return JsonResponse({'Message': f'{e.__str__()}'})
 
@@ -249,12 +248,16 @@ def enter_game(request):
 def answer(request):
     user = Register.objects.get(email=request.session['email'])
     dict1 = {}
-    Answers = []
+    all_answer = []
+    correct = 0
+    wrong = 0
+    attempted = 0
+    unattempted = 0
     quiz_id = request.POST['quiz']
     question = request.POST['question']
-    answer = request.POST.get('answer', '')
+    answers = request.POST.get('answer', '')
     question_list = question.split(',')
-    answer_list = answer.split(',')
+    answer_list = answers.split(',')
 
     for key, value in zip(question_list, answer_list):
         dict1[key] = value.strip()
@@ -263,10 +266,10 @@ def answer(request):
 
         for key in dict1:
             question_get = Question.objects.get(id=key, quiz=quiz_id)
-            previous_answers = User_Answer.objects.filter(user=user, questions_id=question_get)
+            previous_answers = UserAnswer.objects.filter(user=user, questions_id=question_get)
             if not dict1[key] == '':
                 if not previous_answers:
-                    user_answer = User_Answer()
+                    user_answer = UserAnswer()
                     user_answer.attempted = True
                     user_answer.questions_id = question_get
                     user_answer.quiz = question_get.quiz
@@ -279,7 +282,7 @@ def answer(request):
                     user_answer.save()
 
                 if dict1[key] == question_get.answer:
-                    user_answer.complet = True
+                    user_answer.completed = True
                     user_answer.save()
                     result = {
                         'Quiz Name': question_get.quiz.name,
@@ -288,17 +291,18 @@ def answer(request):
                         'Message': 'Your Answer is Correct'
                     }
                 else:
-                    user_answer.complet = False
+                    user_answer.completed = False
                     user_answer.save()
                     result = {
                         'Quiz Name': question_get.quiz.name,
                         'Question': question_get.question,
-                        'Answer': dict1[key],
+                        'Your Answer': dict1[key],
+                        'Correct Answer': question_get.answer,
                         'Message': 'Your Answer is Wrong'
                     }
             else:
                 if not previous_answers:
-                    user_answer = User_Answer()
+                    user_answer = UserAnswer()
                     user_answer.attempted = True
                     user_answer.questions_id = question_get
                     user_answer.quiz = question_get.quiz
@@ -310,12 +314,32 @@ def answer(request):
                         'Question': question_get.question,
                     }
                 else:
+                    user_answer.completed = False
+                    user_answer.save()
                     result = {
                         'Quiz Name': question_get.quiz.name,
                         'Question': question_get.question,
                     }
-            Answers.append(result)
-        return JsonResponse({'User Name': f'{user.first_name} {user.last_name}', 'Answers': Answers})
+            all_answer.append(result)
+        quiz_question = Question.objects.filter(quiz=quiz_id)
+        user_answer = UserAnswer.objects.filter(quiz=quiz_id, user=user)
+        for i in user_answer:
+            if i.attempted:
+                attempted += 1
+                if i.completed:
+                    correct += 1
+                else:
+                    wrong += 1
+            else:
+                unattempted += 1
+
+        total_question = quiz_question.count()
+        unattempted_question = total_question - attempted
+        total_score = int(correct * 100 / total_question)
+        return JsonResponse(
+            {'User Name': f'{user.first_name} {user.last_name}', 'Total_question': total_question, 'Correct': correct,
+             'Wrong': wrong, 'Attempted': attempted, 'UnAttempted': unattempted_question, 'Total Score': total_score,
+             'Answers': all_answer})
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
 
@@ -331,19 +355,19 @@ def score(request):
             wrong = 0
             attempted = 0
             quiz_question = Question.objects.filter(quiz=quiz_id)
-            user_data = User_Answer.objects.filter(quiz=quiz_id, user=user)
+            user_data = UserAnswer.objects.filter(quiz=quiz_id, user=user)
             for quiz in quiz_question:
                 quiz_title = quiz.quiz.name
             for i in user_data:
                 if i.attempted:
                     attempted += 1
-                    if i.complet:
+                    if i.completed:
                         correct += 1
                     else:
                         wrong += 1
             total_question = quiz_question.count()
             unattempted_question = total_question - attempted
-            total_score = correct * 100 / total_question
+            total_score = int(correct * 100 / total_question)
 
             return JsonResponse(
                 {'User': f'{user.first_name} {user.last_name}', 'Quiz Name': f'{quiz_title}',
@@ -353,14 +377,14 @@ def score(request):
                  'Total Score': total_score})
         else:
             user = Register.objects.get(email=request.session['email'])
-            user_data = User_Answer.objects.filter(user=user)
+            user_data = UserAnswer.objects.filter(user=user)
             quiz_title = 'All Quiz'
             list_of_score = []
             other_list = []
             data = {}
             for i in user_data:
                 quiz_question = Question.objects.filter(quiz=i.quiz)
-                user_answer = User_Answer.objects.filter(quiz=i.quiz, user=user)
+                user_answer = UserAnswer.objects.filter(quiz=i.quiz, user=user)
                 correct = 0
                 wrong = 0
                 attempt = 0
@@ -368,7 +392,7 @@ def score(request):
                 for quiz in user_answer:
                     if quiz.attempted:
                         attempt += 1
-                        if quiz.complet:
+                        if quiz.completed:
                             correct += 1
                         else:
                             wrong += 1
