@@ -1,4 +1,5 @@
 import requests
+from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from .serilizers import *
@@ -244,61 +245,63 @@ def enter_game(request):
         return JsonResponse({'Message': e.__str__()})
 
 
+def function1(previous, previous_answers, question_get, user, dict1):
+    result = {}
+    if not previous_answers:
+        user_answer = UserAnswer()
+        user_answer.attempted = True
+        user_answer.questions_id = question_get
+        user_answer.quiz = question_get.quiz
+        user_answer.answer = dict1
+        user_answer.user = user
+        user_answer.save()
+
+    elif previous_answers and previous == [True]:
+        user_answer = previous_answers[0]
+        user_answer.answer = dict1
+        result = {
+            'Quiz Name': question_get.quiz.name,
+            'Question': question_get.question,
+            'Message': 'Correct answer is already exist.'
+        }
+    elif dict1 == question_get.answer:
+        user_answer = previous_answers[0]
+        user_answer.completed = True
+        user_answer.save()
+        result = {
+            'Quiz Name': question_get.quiz.name,
+            'Question': question_get.question,
+            'Answer': dict1,
+            'Message': 'Your Answer is Correct'
+        }
+    else:
+        user_answer = previous_answers[0]
+        user_answer.completed = False
+        user_answer.save()
+        result = {
+            'Quiz Name': question_get.quiz.name,
+            'Question': question_get.question,
+            'Your Answer': dict1,
+            'Message': 'Your Answer is Wrong'
+        }
+    return result
+
+
 @api_view(['POST'])
 def answer(request):
     user = Register.objects.get(email=request.session['email'])
-    dict1 = {}
     all_answer = []
-    result = {}
     quiz_id = request.POST['quiz']
     question = request.POST['question'].split(',')
     answers = request.POST.get('answer', '').split('.,')
-    for key, value in zip(question, answers):
-        dict1[key] = value.strip()
+    dict1 = {key: value.strip() for key, value in zip(question, answers)}
     try:
         for key in dict1:
             question_get = Question.objects.get(id=key, quiz=quiz_id)
             previous_answers = UserAnswer.objects.filter(user=user, questions_id=question_get)
             previous = [previous.completed is True for previous in previous_answers]
             if not dict1[key] == '':
-                if not previous_answers:
-                    user_answer = UserAnswer()
-                    user_answer.attempted = True
-                    user_answer.questions_id = question_get
-                    user_answer.quiz = question_get.quiz
-                    user_answer.answer = dict1[key]
-                    user_answer.user = user
-                    user_answer.save()
-
-                elif previous_answers and previous == [True]:
-                    user_answer = previous_answers[0]
-                    user_answer.answer = dict1[key]
-                    result = {
-                        'Quiz Name': question_get.quiz.name,
-                        'Question': question_get.question,
-                        'Message': 'Is Answer already exist '
-                    }
-                elif dict1[key] == question_get.answer:
-                    user_answer = previous_answers[0]
-                    user_answer.completed = True
-                    user_answer.save()
-                    result = {
-                        'Quiz Name': question_get.quiz.name,
-                        'Question': question_get.question,
-                        'Answer': dict1[key],
-                        'Message': 'Your Answer is Correct'
-                    }
-                else:
-                    user_answer = previous_answers[0]
-                    user_answer.completed = False
-                    user_answer.save()
-                    result = {
-                        'Quiz Name': question_get.quiz.name,
-                        'Question': question_get.question,
-                        'Your Answer': dict1[key],
-                        'Correct Answer': question_get.answer,
-                        'Message': 'Your Answer is Wrong'
-                    }
+                result = {'result': function1(previous, previous_answers, question_get, user, dict1[key])}
             else:
                 if not previous_answers:
                     user_answer = UserAnswer()
@@ -406,9 +409,7 @@ def score(request):
                 for other_name in list_of_score:
                     if name == other_name and other_list.count(other_name) == 0:
                         other_list.append(other_name)
-
         return JsonResponse({'User': f'{user.first_name} {user.last_name}', 'Quiz Name': f'{quiz_title}',
                              'All Score': other_list})
-
     except Exception as e:
         return JsonResponse({'Message': e.__str__()})
