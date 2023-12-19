@@ -23,6 +23,7 @@ class Quiz(models.Model):
 class Question(models.Model):
     id = models.AutoField(primary_key=True)
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
+    level = models.IntegerField(default=0)
     question = models.CharField(max_length=250)
     option_one = models.CharField(max_length=50, null=True)
     option_two = models.CharField(max_length=50, null=True)
@@ -39,6 +40,7 @@ class UserAnswer(models.Model):
     user = models.ForeignKey(Register, on_delete=models.CASCADE)
     questions_id = models.ForeignKey(Question, on_delete=models.CASCADE)
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, null=True)
+    level = models.IntegerField(default=0)
     attempted = models.BooleanField(default=False)
     completed = models.BooleanField(default=False)
     answer = models.CharField(max_length=50)

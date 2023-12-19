@@ -14,11 +14,11 @@ class Quizadmin(admin.ModelAdmin):
 
 
 class Questionadmin(admin.ModelAdmin):
-    list_display = ('id', 'quiz', 'question', 'option_one', 'option_two', 'option_three', 'option_four', 'answer')
+    list_display = ('id', 'quiz', 'level', 'question', 'option_one', 'option_two', 'option_three', 'option_four', 'answer')
 
 
 class Useransweradmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'questions_id', 'quiz', 'attempted', 'completed', 'answer')
+    list_display = ('id', 'user', 'level', 'questions_id', 'quiz', 'attempted', 'completed', 'answer')
 
 
 admin.site.register(Register, Registeradmin)

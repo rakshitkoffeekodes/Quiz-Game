@@ -14,6 +14,7 @@ urlpatterns = [
     path('delete_question/', views.delete_question),
     path('view_question/', views.view_question),
     path('quiz_name/', views.quiz_name),
+    path('quiz_level/', views.quiz_level),
     path('enter_game/', views.enter_game),
     path('answer/', views.answer),
     path('score/', views.score),
