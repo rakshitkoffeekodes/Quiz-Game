@@ -1,5 +1,8 @@
 from django.http import JsonResponse
-from rest_framework.decorators import api_view
+from rest_framework.authentication import BasicAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import IsAuthenticated
+
 from .serilizers import *
 
 
@@ -48,6 +51,8 @@ def logout(request):
 
 
 @api_view(['POST'])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def add_quiz(request):
     name = request.POST['name']
     description = request.POST.get('description', '')
@@ -66,6 +71,8 @@ def add_quiz(request):
 
 
 @api_view(['PUT'])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def update_quiz(request):
     primary_key = request.POST['id']
     name = request.POST.get('name', '')
@@ -83,6 +90,8 @@ def update_quiz(request):
 
 
 @api_view(['DELETE'])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def delete_quiz(request):
     primary_key = request.POST['id']
     try:
@@ -94,6 +103,8 @@ def delete_quiz(request):
 
 
 @api_view(['GET'])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def view_quiz(request):
     all_quiz = Quiz.objects.all()
     serial = QuizSerializer(all_quiz, many=True)
@@ -101,9 +112,12 @@ def view_quiz(request):
 
 
 @api_view(['POST'])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def add_question(request):
     quiz = request.POST['quiz']
     question = request.POST['question']
+    level = request.POST['level']
     option_one = request.POST['option_one']
     option_two = request.POST['option_two']
     option_three = request.POST['option_three']
@@ -111,6 +125,7 @@ def add_question(request):
     answers = request.POST['answer']
 
     question_list = question.split('.,')
+    level_list = level.split(',')
     option_one_list = option_one.split(',')
     option_two_list = option_two.split(',')
     option_three_list = option_three.split(',')
@@ -122,6 +137,7 @@ def add_question(request):
         for i in range(len(question_list)):
             question_add = Question()
             question_add.quiz = quiz_id
+            question_add.level = level_list[i]
             question_add.question = question_list[i]
             question_add.option_one = option_one_list[i]
             question_add.option_two = option_two_list[i]
@@ -136,6 +152,8 @@ def add_question(request):
 
 
 @api_view(['PUT'])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def update_question(request):
     primary_key = request.POST['id']
     question = request.POST.get('question', '')
@@ -166,6 +184,8 @@ def update_question(request):
 
 
 @api_view(['DELETE'])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def delete_question(request):
     primary_key = request.POST['id']
     try:
@@ -177,6 +197,8 @@ def delete_question(request):
 
 
 @api_view(['GET'])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def view_question(request):
     list_of_question = []
     all_question = Question.objects.all()
@@ -232,15 +254,15 @@ def enter_game(request):
     level = request.POST['level']
     try:
         user = Register.objects.get(email=request.session['email'])
-        list_of_question, lev, count = [], [], 0
+        list_of_question, one_level, count = [], [], 0
         one_quiz = Quiz.objects.get(id=int(primary_key))
         all_question = Question.objects.filter(quiz=one_quiz, level=level)
         levels = UserAnswer.objects.filter(user=user, level=level, quiz=one_quiz)
         for i in levels:
             one_level = UserAnswer.objects.filter(user=user, level=int(i.level) - 1, quiz=one_quiz)
-            lev.append(all(one.completed for one in one_level))
+        correct = [one for one in one_level if one.completed]
         if len(levels) != 0:
-            if all(lev) or int(level) == 1:
+            if len(correct) >= 3 or int(level) == 1:
                 for question in all_question:
                     question_data = {
                         'Question': question.question,
@@ -387,7 +409,7 @@ def empty_answer(previous_answers, question_get, dict1, user, level):
 @api_view(['POST'])
 def answer(request):
     user = Register.objects.get(email=request.session['email'])
-    all_answer = []
+    all_answer, one_level = [], []
     quiz_id = request.POST['quiz']
     level = request.POST['level']
     question = request.POST['question'].split(',')
@@ -396,17 +418,25 @@ def answer(request):
 
     try:
         for key in dict1:
+            one_quiz = Quiz.objects.get(id=int(quiz_id))
             question_get = Question.objects.get(id=key, quiz=quiz_id, level=level)
             previous_answers = UserAnswer.objects.filter(user=user, questions_id=question_get, level=level)
+            levels = UserAnswer.objects.filter(user=user, quiz=quiz_id, level=level)
             previous = [previous.completed is True for previous in previous_answers]
+            for i in levels:
+                one_level = UserAnswer.objects.filter(user=user, level=int(i.level) - 1, quiz=one_quiz)
+            correct = [one for one in one_level if one.completed]
+            if len(correct) >= 3 or int(level) == 1:
+                if not dict1[key] == '':
+                    result = {
+                        f'Answer': no_empty_answer(previous, previous_answers, question_get, user, dict1[key], level)}
 
-            if not dict1[key] == '':
-                result = {f'Answer': no_empty_answer(previous, previous_answers, question_get, user, dict1[key], level)}
+                else:
+                    result = {'Answer': empty_answer(previous_answers, question_get, dict1[key], user, level)}
 
+                all_answer.append(result)
             else:
-                result = {'Answer': empty_answer(previous_answers, question_get, dict1[key], user, level)}
-
-            all_answer.append(result)
+                return JsonResponse({'Message': 'Complete the next level first'})
 
         quiz_question = Question.objects.filter(quiz=quiz_id, level=level)
         user_answer = UserAnswer.objects.filter(quiz=quiz_id, user=user, level=level)

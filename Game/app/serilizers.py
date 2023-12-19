@@ -11,7 +11,7 @@ class QuizSerializer(serializers.ModelSerializer):
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        fields = ('user', 'quiz', 'level', 'question', 'option_one', 'option_two', 'option_three', 'option_four')
+        fields = ('user', 'quiz', 'level','question', 'option_one', 'option_two', 'option_three', 'option_four')
 
 
 class UserAnswerSerializer(serializers.ModelSerializer):
