@@ -232,17 +232,14 @@ def enter_game(request):
     level = request.POST['level']
     try:
         user = Register.objects.get(email=request.session['email'])
-        list_of_question = []
-        count = 0
-        primary_key = int(primary_key)
-        one_quiz = Quiz.objects.get(id=primary_key)
+        list_of_question, lev, count = [], [], 0
+        one_quiz = Quiz.objects.get(id=int(primary_key))
         all_question = Question.objects.filter(quiz=one_quiz, level=level)
         levels = UserAnswer.objects.filter(user=user, level=level, quiz=one_quiz)
-        lev = []
         for i in levels:
             one_level = UserAnswer.objects.filter(user=user, level=int(i.level) - 1, quiz=one_quiz)
             lev.append(all(one.completed for one in one_level))
-        if levels is None:
+        if len(levels) != 0:
             if all(lev) or int(level) == 1:
                 for question in all_question:
                     question_data = {
