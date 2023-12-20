@@ -1,6 +1,7 @@
+from django.contrib.auth import authenticate
 from django.http import JsonResponse
 from rest_framework.authentication import BasicAuthentication
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 
 from .serilizers import *
@@ -51,8 +52,19 @@ def logout(request):
 
 
 @api_view(['POST'])
+def function_based_view(request):
+    username = request.POST['username']
+    password = request.POST['password']
+
+    user = authenticate(username=username, password=password)
+    if user is not None:
+        return JsonResponse({'User': f'{user}'})
+    else:
+        return JsonResponse({'None': None})
+
+
+@api_view(['POST'])
 @authentication_classes([BasicAuthentication])
-@permission_classes([IsAuthenticated])
 def add_quiz(request):
     name = request.POST['name']
     description = request.POST.get('description', '')
@@ -72,7 +84,6 @@ def add_quiz(request):
 
 @api_view(['PUT'])
 @authentication_classes([BasicAuthentication])
-@permission_classes([IsAuthenticated])
 def update_quiz(request):
     primary_key = request.POST['id']
     name = request.POST.get('name', '')
@@ -91,7 +102,6 @@ def update_quiz(request):
 
 @api_view(['DELETE'])
 @authentication_classes([BasicAuthentication])
-@permission_classes([IsAuthenticated])
 def delete_quiz(request):
     primary_key = request.POST['id']
     try:
@@ -104,7 +114,6 @@ def delete_quiz(request):
 
 @api_view(['GET'])
 @authentication_classes([BasicAuthentication])
-@permission_classes([IsAuthenticated])
 def view_quiz(request):
     all_quiz = Quiz.objects.all()
     serial = QuizSerializer(all_quiz, many=True)
@@ -113,7 +122,6 @@ def view_quiz(request):
 
 @api_view(['POST'])
 @authentication_classes([BasicAuthentication])
-@permission_classes([IsAuthenticated])
 def add_question(request):
     quiz = request.POST['quiz']
     question = request.POST['question']
@@ -153,7 +161,6 @@ def add_question(request):
 
 @api_view(['PUT'])
 @authentication_classes([BasicAuthentication])
-@permission_classes([IsAuthenticated])
 def update_question(request):
     primary_key = request.POST['id']
     question = request.POST.get('question', '')
@@ -185,7 +192,6 @@ def update_question(request):
 
 @api_view(['DELETE'])
 @authentication_classes([BasicAuthentication])
-@permission_classes([IsAuthenticated])
 def delete_question(request):
     primary_key = request.POST['id']
     try:
@@ -198,7 +204,6 @@ def delete_question(request):
 
 @api_view(['GET'])
 @authentication_classes([BasicAuthentication])
-@permission_classes([IsAuthenticated])
 def view_question(request):
     list_of_question = []
     all_question = Question.objects.all()
