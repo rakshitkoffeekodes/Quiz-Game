@@ -4,7 +4,6 @@ urlpatterns = [
     path('', views.register),
     path('login/', views.login),
     path('logout/', views.logout),
-    path('function_based_view/', views.function_based_view),
     path('add_quiz/', views.add_quiz),
     path('update_quiz/', views.update_quiz),
     path('delete_quiz/', views.delete_quiz),

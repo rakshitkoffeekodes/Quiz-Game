@@ -1,9 +1,6 @@
-from django.contrib.auth import authenticate
 from django.http import JsonResponse
 from rest_framework.authentication import BasicAuthentication
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
-from rest_framework.permissions import IsAuthenticated
-
+from rest_framework.decorators import api_view, authentication_classes
 from .serilizers import *
 
 
@@ -49,18 +46,6 @@ def login(request):
 def logout(request):
     del request.session['email']
     return JsonResponse({'Message': 'Logout Success'})
-
-
-@api_view(['POST'])
-def function_based_view(request):
-    username = request.POST['username']
-    password = request.POST['password']
-
-    user = authenticate(username=username, password=password)
-    if user is not None:
-        return JsonResponse({'User': f'{user}'})
-    else:
-        return JsonResponse({'None': None})
 
 
 @api_view(['POST'])
@@ -222,9 +207,10 @@ def view_question(request):
 
 
 @api_view(['GET'])
+@authentication_classes([BasicAuthentication])
 def quiz_name(request):
     try:
-        user = Register.objects.get(email=request.session['email'])
+        # user = Register.objects.get(email=request.session['email'])
         all_quiz = Quiz.objects.all()
         all_quiz_list = []
         for quiz in all_quiz:
@@ -242,6 +228,7 @@ def quiz_name(request):
 
 
 @api_view(['POST'])
+@authentication_classes([BasicAuthentication])
 def quiz_level(request):
     levels = []
     quiz_id = request.POST['quiz id']
@@ -254,6 +241,7 @@ def quiz_level(request):
 
 
 @api_view(['POST'])
+@authentication_classes([BasicAuthentication])
 def enter_game(request):
     primary_key = request.POST['id']
     level = request.POST['level']
@@ -412,6 +400,7 @@ def empty_answer(previous_answers, question_get, dict1, user, level):
 
 
 @api_view(['POST'])
+@authentication_classes([BasicAuthentication])
 def answer(request):
     user = Register.objects.get(email=request.session['email'])
     all_answer, one_level = [], []
@@ -463,6 +452,7 @@ def answer(request):
 
 
 @api_view(['POST'])
+@authentication_classes([BasicAuthentication])
 def score(request):
     quiz_id = request.POST.get('quiz_id', '')
     user = Register.objects.get(email=request.session['email'])
